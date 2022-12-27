@@ -1,11 +1,11 @@
 import Data.List
 import Data.Ord
 
-eratos_sieve = sieve [2..]
+eratosSieve = sieve [2..]
     where sieve (p:xs) = p : sieve ( filter (\t -> t `rem` p /= 0) xs )
           sieve [] = []
 
-eratos_sieve_opt = filter isPrime [2..]
+eratosSieveOpt = filter isPrime [2..]
     where   isPrime n = check n 2
             check n d
                 | d*d > n        = True
@@ -17,7 +17,7 @@ eratos_sieve_opt = filter isPrime [2..]
 -- Problem 3
 -- 600851475143
 
-largestPrimeFactorOf n = divider n eratos_sieve_opt
+largestPrimeFactorOf n = divider n eratosSieveOpt
     where divider n (q:xs)
             | n == q = q
             | n `rem` q == 0 = divider (n `div` q) xs
@@ -28,14 +28,14 @@ largestPrimeFactorOf n = divider n eratos_sieve_opt
 -- 10001st prime
 -- Problem 7
 
-tenThousandAndFirstPrime = eratos_sieve_opt !! 10001
+tenThousandAndFirstPrime = eratosSieveOpt !! 10001
 
 -----------------------------
 -- Summation of primes
 -- Problem 10
 
 
-primesUntil upperBound = takeWhile ( <= upperBound) eratos_sieve_opt
+primesUntil upperBound = takeWhile ( <= upperBound) eratosSieveOpt
 primesSumUntil upperBound = sum $ primesUntil upperBound
 
 testPrimes = (primesUntil 300) == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293]
