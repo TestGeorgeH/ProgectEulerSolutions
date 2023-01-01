@@ -1,11 +1,12 @@
 import Data.List
 import Data.Ord
 
-eratosSieve = sieve [2..]
-    where sieve (p:xs) = p : sieve ( filter (\t -> t `rem` p /= 0) xs )
-          sieve [] = []
+primes = sieve [2..]
+    where   sieve (p:xs) = p : sieve ( filter (`notDivisibleBy` p) xs )
+            sieve [] = []
+            notDivisibleBy t p = t `rem` p /= 0
 
-eratosSieveOpt = filter isPrime [2..]
+primesOpt = filter isPrime [2..]
     where   isPrime n = check n 2
             check n d
                 | d*d > n        = True
@@ -17,7 +18,7 @@ eratosSieveOpt = filter isPrime [2..]
 -- Problem 3
 -- 600851475143
 
-largestPrimeFactorOf n = divider n eratosSieveOpt
+largestPrimeFactorOf n = divider n primesOpt
     where divider n (q:xs)
             | n == q = q
             | n `rem` q == 0 = divider (n `div` q) xs
@@ -28,17 +29,17 @@ largestPrimeFactorOf n = divider n eratosSieveOpt
 -- 10001st prime
 -- Problem 7
 
-tenThousandAndFirstPrime = eratosSieveOpt !! 10001
+tenThousandAndFirstPrime = primesOpt !! 10001
 
 -----------------------------
 -- Summation of primes
 -- Problem 10
 
 
-primesUntil upperBound = takeWhile ( <= upperBound) eratosSieveOpt
+primesUntil upperBound = takeWhile ( <= upperBound) primesOpt
 primesSumUntil upperBound = sum $ primesUntil upperBound
 
-testPrimes = (primesUntil 300) == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293]
+-- testPrimes = (primesUntil 300) == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293]
 
 -----------------------------
 -- Circular primes
@@ -82,8 +83,8 @@ circularPrimesUntil n = concat $ circularPrimesUntil' 2 (circularPrimesCandUntil
 
 -- the solution is slow and ugly
 
-nDigit n = filter (\t -> numDigits t == n)
-fourDigitPrimes = nDigit 4 (primesUntil 10000)
+leaveNDigitNumbers n = filter (\t -> numDigits t == n)
+fourDigitPrimes = leaveNDigitNumbers 4 (primesUntil 10000)
 
 digits = map (read . (:[])) . show
 
@@ -92,17 +93,18 @@ fromDigits l = foldl1 (\x y -> 10*x+y) l
 rmdups :: (Ord a) => [a] -> [a] -- they are just 4 digits, that will cut it
 rmdups = map head . group . sort
 
+-- replace by sets later
+
 isSubList :: Eq a => [a] -> [a] -> Bool
-isSubList [] [] = True
-isSubList _ []    = False
 isSubList [] _    = True
+isSubList _ []    = False
 isSubList (x:xs) (y:ys) 
     | x == y    = isSubList xs ys   
     | otherwise = isSubList (x:xs) ys
 
 
 permutateNumber n = (permutateNumber' n (numDigits n))
-    where permutateNumber' n l = nDigit l $ rmdups $ map (fromDigits) (permutations(digits n))
+    where permutateNumber' n l = leaveNDigitNumbers l $ rmdups $ map (fromDigits) (permutations(digits n))
 
 -- is more elegant way avaliable? (without sort and filter)
 permutateNumberByThree n = rmdups $ map sort ([[x,y,z] | x <- perms n, y <- (perms n) \\ [x], z <- (perms n) \\ [x, y]])
@@ -193,9 +195,9 @@ digitFactorials = [1,1,2,6,24,120,720,5040,40320,362880]
 -- Upper bound is 2_540_160, as largest sum of factorials is 9!*7
 -- (it can be heavily reduced, but it requires elaborate explanations)
 
-sumFactDigits n = sum $ map (\t -> digitFactorials !! t) (digits n)
+sumFactDigits n = sum $ map ((!!) digitFactorials) (digits n)
 
-specialFactNumbers = [i|  i <- [0..2_540_160], sumFactDigits i == i]
+specialFactNumbers = [i|  i <- [0..2540160], sumFactDigits i == i]
 
 ------------------------
 
@@ -209,5 +211,8 @@ collatz n
 
 longestCollatzUnder n = maximumBy (comparing length) [collatz i | i <- [1..100]]
 
+-- main :: IO()
+-- main = putStrLn (show (longestCollatzUnder 1_000_000))
+
 main :: IO()
-main = putStrLn (show (longestCollatzUnder 1_000_000))
+main = putStrLn (show (specialFactNumbers))
