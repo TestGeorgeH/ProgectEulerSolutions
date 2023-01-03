@@ -1,10 +1,15 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 import Data.List
 import Data.Ord
 import Data.FastDigits (digits, undigits)
 import Math.NumberTheory.Roots (integerSquareRoot, isSquare)
+import Data.Map (Map)
+import qualified Data.Map as Map
+
+import Data.Map.Internal.Debug (showTreeWith)
 
 -- TODO:
---     add sets
 --     add normal tests 
 --     add signatures for functions
 
@@ -16,11 +21,12 @@ primes = sieve [2..]
 
 primesOpt :: (Integral a) => [a]
 primesOpt = filter isPrime [2..]
-    where   isPrime n = check n 2
-            check n d
-                | d*d > n        = True
-                | n `rem` d == 0 = False
-                | otherwise      = check n (d+1)
+isPrime n = check n 2
+    where
+        check n d
+            | d*d > n        = True
+            | n `rem` d == 0 = False
+            | otherwise      = check n (d+1)
 
 -----------------------------
 -- Largest prime factor
@@ -51,8 +57,6 @@ primesUntil upperBound = takeWhile ( <= upperBound) primesOpt
 
 primesSumUntil :: (Integral a) => a -> a
 primesSumUntil upperBound = sum $ primesUntil upperBound
-
--- testPrimes = (primesUntil 300) == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293]
 
 -----------------------------
 -- Circular primes
@@ -105,48 +109,53 @@ circularPrimesUntil n = concat $ circularPrimesUntil' 2 (circularPrimesCandUntil
 
 leaveNDigitNumbers n = filter (\t -> numDigits t == n)
 
+fourDigitPrimes :: (Integral a) => [a]
 fourDigitPrimes = leaveNDigitNumbers 4 (primesUntil 10000)
 
 rmdups :: (Ord a) => [a] -> [a] -- they are just 4 digits, that will cut it
 rmdups = map head . group . sort
 
--- TODO replace to sets later
+mapExample = helper [1,2,3,4,5]
+    where 
+            helper [] = Map.empty
+            helper (x:xs) = Map.insert x x (helper xs)  
 
-isSubList :: Eq a => [a] -> [a] -> Bool
-isSubList [] _    = True
-isSubList _ []    = False
-isSubList (x:xs) (y:ys) 
-    | x == y    = isSubList xs ys   
-    | otherwise = isSubList (x:xs) ys
+genKey :: (Integral a) => a -> a
+genKey n = fromIntegral $ undigits 10 $ sort $ digits 10 (fromIntegral n)
 
+keyedFourDigitPrimes :: (Integral a) => Map a [a]
+keyedFourDigitPrimes = mapper fourDigitPrimes
+    where   mapper :: (Integral a) => [a] -> Map a [a]
+            mapper [] = Map.empty
+            mapper (n:xs)
+                | isPrime n = Map.insertWith (++) (genKey n) [n] (mapper xs)
+                | otherwise = mapper xs 
 
-permutateNumber n = (permutateNumber' n (numDigits n))
-    where permutateNumber' n l = leaveNDigitNumbers l $ rmdups $ map (undigits 10) (permutations(digits 10 n))
+prettyFourDigitPrimesCandidates :: (Integral a) => [[a]]
+prettyFourDigitPrimesCandidates = map (sort.snd) $ Map.toList keyedFourDigitPrimes
 
--- is more elegant way avaliable? (without sort and filter)
-permutateNumberByThree n = rmdups $ map sort ([[x,y,z] | x <- perms n, y <- (perms n) \\ [x], z <- (perms n) \\ [x, y]])
-    where perms n = permutateNumber n 
+-- can be done faster, but sequences are no longer then 10
 
-permutatedPrimes = permutatedPrimes' (head fourDigitPrimes) fourDigitPrimes
-    where   perm c = permutateNumberByThree c
+isArithmSeq :: (Num a, Eq a) => [a] -> Bool
+isArithmSeq [] = False
+isArithmSeq [x] = False
+isArithmSeq [x,y] = True
+isArithmSeq (x:y:z:xs) = (x - y) == (y - z) && isArithmSeq (y:z:xs)
 
-            calculateRest c candidates = (permutatedPrimes' (head (candidates \\ concat (perm c))) (candidates \\ concat (perm c)))
+arithSubseq :: (Integral a) => [a] -> [[a]]
+arithSubseq seq = filter isArithmSeq $ subsequences seq
+maxArithSubseq :: (Integral a) => [a] -> [a]
+maxArithSubseq [] = []
+maxArithSubseq [x] = [x]
+maxArithSubseq seq = maximumBy (comparing length) $ arithSubseq seq
 
-            permutatedPrimes' _ [] = []
-            permutatedPrimes' c candidates 
-                | any (\t -> t `isSubList` candidates) (perm c) = ((filter (\t -> t `isSubList` candidates) (perm c))) ++ (calculateRest c candidates)
-                | otherwise = (calculateRest c candidates)
-        
-
--- optimised to 20 sec run, good for now
-
-permutatedPrimesWithEqDiffs = filter areDiffsEqual permutatedPrimes 
-    where   areDiffsEqual (a:b:c:xs) = nc-nb == nb-na
-                where s = sort([a,b,c])
-                      nc = s!!2
-                      nb = s!!1
-                      na = s!!0
-            areDiffsEqual _ = False
+-- optimised to a couple of seconds
+largestPrettyFourDigitPrimes = filter (\t -> length t == maxLen) candidates
+    where   
+            candidates :: (Integral a) => [[a]]
+            candidates = map maxArithSubseq  prettyFourDigitPrimesCandidates
+            maxLen :: (Integral a) => a
+            maxLen = fromIntegral $ maximum $ map length candidates
 
 -------------------------
 -- primes are boring, I'll go do something else
@@ -232,8 +241,8 @@ collatz n
 longestCollatzUnder :: (Integral a) => a -> [a]
 longestCollatzUnder n = maximumBy (comparing length) [collatz i | i <- [1..n]]
 
--- main :: IO()
--- main = putStrLn (show (longestCollatzUnder 1000000))
-
 main :: IO()
-main = putStrLn (show (permutatedPrimesWithEqDiffs))
+main = putStrLn (show (largestPrettyFourDigitPrimes))
+
+-- main :: IO()
+-- main = putStrLn $ showTreeWith (\k x -> show (k,x)) True False keyedFourDigitPrimes
